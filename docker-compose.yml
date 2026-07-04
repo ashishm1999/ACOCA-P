@@ -1,0 +1,119 @@
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: acoca-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - acoca-net
+
+  postgres:
+    image: postgres:15
+    container_name: acoca-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - acoca-net
+
+  capme:
+    build: ./capme
+    container_name: acoca-capme
+    env_file: .env
+    ports:
+      - "${CAPME_PORT}:8081"
+    depends_on:
+      - mongo
+      - postgres
+    networks:
+      - acoca-net
+
+  cfms:
+    build: ./cfms
+    container_name: acoca-cfms
+    env_file: .env
+    ports:
+      - "${CFMS_PORT}:8082"
+    depends_on:
+      - mongo
+    networks:
+      - acoca-net
+
+  dcmf:
+    build: ./dcmf
+    container_name: acoca-dcmf
+    env_file: .env
+    ports:
+      - "${DCMF_PORT}:8083"
+      - "${DCMF_GRPC_PORT}:9083"
+    depends_on:
+      - capme
+      - cfms
+    networks:
+      - acoca-net
+
+  vacf:
+    build: ./vacf
+    container_name: acoca-vacf
+    env_file: .env
+    ports:
+      - "${VACF_PORT}:8084"
+      - "${VACF_GRPC_PORT}:9084"
+    depends_on:
+      - dcmf
+    networks:
+      - acoca-net
+
+  eccf-node-1:
+    build: ./eccf
+    container_name: acoca-eccf-1
+    env_file: .env
+    environment:
+      NODE_ID: hawthorn
+      PEERS: eccf-node-2:9085,eccf-node-3:9085
+    ports:
+      - "8091:8085"
+      - "9091:9085"
+    networks:
+      - acoca-net
+
+  eccf-node-2:
+    build: ./eccf
+    container_name: acoca-eccf-2
+    env_file: .env
+    environment:
+      NODE_ID: burwood
+      PEERS: eccf-node-1:9085,eccf-node-3:9085
+    ports:
+      - "8092:8085"
+      - "9092:9085"
+    networks:
+      - acoca-net
+
+  eccf-node-3:
+    build: ./eccf
+    container_name: acoca-eccf-3
+    env_file: .env
+    environment:
+      NODE_ID: malvern
+      PEERS: eccf-node-1:9085,eccf-node-2:9085
+    ports:
+      - "8093:8085"
+      - "9093:9085"
+    networks:
+      - acoca-net
+
+volumes:
+  mongo-data:
+  pg-data:
+
+networks:
+  acoca-net:
+    driver: bridge

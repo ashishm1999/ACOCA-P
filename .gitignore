@@ -1,0 +1,34 @@
+# --- The generated dataset lives outside version control ---
+# Regenerate with:  python3 data/generate_dataset.py --n 280000 --seed 20260703
+data/roadwork_dataset.jsonl
+data/*.jsonl.gz
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.env
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+!**/lib/*.jar
+
+# --- Docker ---
+.docker/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- Logs / caches ---
+*.log
+tmp/
+cache/

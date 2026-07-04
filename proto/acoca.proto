@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package acoca;
+
+option java_multiple_files = true;
+option java_package = "org.coaas.acoca.proto";
+option java_outer_classname = "AcocaProto";
+
+// -----------------------------------------------------------------------------
+// Cache decisioning (DCMF): combine CF and PoA evidence via Dempster-Shafer.
+// -----------------------------------------------------------------------------
+service CacheService {
+  rpc Decide  (CacheEvidence) returns (CacheDecision);
+  rpc Explain (ItemId)        returns (Explanation);
+}
+
+message ItemId {
+  string item_id = 1;
+}
+
+message CacheEvidence {
+  string item_id  = 1;
+  double cf       = 2;   // context freshness in [0, 1]
+  double poa      = 3;   // probability of access in [0, 1]
+  double cf_mass  = 4;   // Dempster-Shafer mass for cf evidence
+  double poa_mass = 5;   // Dempster-Shafer mass for poa evidence
+}
+
+message CacheDecision {
+  string item_id       = 1;
+  bool   cache         = 2;    // admit / retain
+  double belief_cache  = 3;    // combined belief in caching
+  double belief_evict  = 4;    // combined belief in eviction
+  double conflict      = 5;    // Dempster's rule conflict mass
+}
+
+message Explanation {
+  string item_id     = 1;
+  double cf          = 2;
+  double poa         = 3;
+  double belief      = 4;
+  string rationale   = 5;
+}
+
+// -----------------------------------------------------------------------------
+// Policy distribution (VACF): controller pushes TTL + replication policy.
+// -----------------------------------------------------------------------------
+service PolicyService {
+  rpc Push       (VACFPolicy)        returns (Ack);
+  rpc StreamPush (stream VACFPolicy) returns (Ack);
+  rpc Report     (Telemetry)         returns (Ack);
+}
+
+message VACFPolicy {
+  string item_id       = 1;
+  int64  ttl_ms        = 2;   // adaptive TTL
+  int32  replicas      = 3;   // demand-aware replication count
+  double cvi           = 4;   // context volatility index
+  int64  generated_at  = 5;   // unix millis
+}
+
+message Telemetry {
+  string node_id           = 1;
+  int64  reported_at       = 2;
+  double hit_rate          = 3;
+  double miss_rate         = 4;
+  double avg_freshness     = 5;
+  repeated ItemFreshness item_freshness = 6;
+}
+
+message ItemFreshness {
+  string item_id = 1;
+  double cf      = 2;
+}
+
+message Ack {
+  bool   ok      = 1;
+  string message = 2;
+}
+
+// -----------------------------------------------------------------------------
+// Edge coordination (ECCF): gossip cache summaries.
+// -----------------------------------------------------------------------------
+service GossipService {
+  rpc Push (GossipDigest) returns (Ack);
+}
+
+message GossipDigest {
+  string node_id   = 1;
+  int64  round     = 2;
+  bytes  cms       = 3;   // serialised Count-Min Sketch of hot items
+  double avg_cvi   = 4;
+  int64  timestamp = 5;
+}
